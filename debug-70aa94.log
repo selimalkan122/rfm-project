@@ -1,0 +1,1 @@
+{"sessionId": "70aa94", "runId": "pre-fix", "hypothesisId": "A", "location": "clv.py:add_clv_tenure:before_return", "message": "CustomerID column vs index after CLV merge", "data": {"CustomerID_in_columns": false, "index_name": "CustomerID", "n_rows": 5878}, "timestamp": 1776510464886}

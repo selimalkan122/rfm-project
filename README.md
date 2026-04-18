@@ -1,6 +1,6 @@
 # RFM Customer Segmentation and CLV Analysis
 
-A Jupyter project that analyses customer behaviour using the UCI **Online Retail II** dataset: RFM (Recency, Frequency, Monetary) metrics, rule-based segments, a simple CLV estimate, and K-Means clustering.
+A project that analyses customer behaviour using the UCI **Online Retail II** dataset: RFM (Recency, Frequency, Monetary) metrics, rule-based segments, a simple CLV estimate, and K-Means clustering.
 
 ## Features
 
