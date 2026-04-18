@@ -1,0 +1,212 @@
+--- Cell 1 (code) ---
+import pandas as pd
+import numpy as np
+import datetime as dt
+
+--- Cell 2 (code) ---
+df1 = pd.read_excel('online_retail_II.xlsx', sheet_name='Year 2009-2010')
+df2 = pd.read_excel('online_retail_II.xlsx', sheet_name='Year 2010-2011')
+
+--- Cell 3 (code) ---
+print(df1.shape, df2.shape)
+
+--- Cell 4 (code) ---
+df1.head()
+
+--- Cell 5 (code) ---
+df2.head()
+
+--- Cell 6 (code) ---
+print("---Missing Value in 2009-2010 ---")
+print(df1.isnull().sum())
+
+print("---Missing Value in 2010-2011 ---")
+print(df2.isnull().sum())
+
+--- Cell 7 (code) ---
+# RFM için kritik alan CustomerID; Description eksikliği analiz için engel değil.
+# Bu yüzden sadece CustomerID boş olanları düşürüyoruz.
+
+df1 = df1.rename(columns={"Customer ID": "CustomerID"}).copy()
+df2 = df2.rename(columns={"Customer ID": "CustomerID"}).copy()
+    ...
+
+--- Cell 8 (code) ---
+# Data Merge
+
+df = pd.concat([df1, df2], ignore_index=True)
+
+# Duplicate kontrolü (özellikle merge sonrası)
+    ...
+
+--- Cell 9 (code) ---
+# RFM metrics
+
+# Reference date: 1 day after the last transaction date in the dataset
+reference_date = df["InvoiceDate"].max() + pd.Timedelta(days=1)
+print(reference_date)
+    ...
+
+--- Cell 10 (code) ---
+rfm.head()
+
+--- Cell 11 (code) ---
+# Scoring (5-quantile)
+
+rfm["R_score"] = pd.qcut(rfm["recency"], 5, labels=[5, 4, 3, 2, 1]).astype(int)
+rfm["F_score"] = pd.qcut(rfm["frequency"].rank(method="first"), 5, labels=[1, 2, 3, 4, 5]).astype(int)
+rfm["M_score"] = pd.qcut(rfm["monetary"], 5, labels=[1, 2, 3, 4, 5]).astype(int)
+    ...
+
+--- Cell 12 (code) ---
+# Segment isimleri ve özet (hangi grupta kaç müşteri / ne kadar ciro)
+
+def rfm_segment_name(row):
+    r, f, m = row["R_score"], row["F_score"], row["M_score"]
+    if r >= 4 and f >= 4 and m >= 4:
+    ...
+
+--- Cell 13 (markdown) ---
+## 1 · Extended Imports & Setup
+
+--- Cell 14 (code) ---
+# ── Standard ──────────────────────────────────────────────────────────────
+import pandas as pd
+import numpy as np
+import datetime as dt
+import warnings
+    ...
+
+--- Cell 15 (markdown) ---
+## 2 · Rule-Based Segment Visualisations
+
+--- Cell 16 (code) ---
+def plot_segment_overview(segment_summary: pd.DataFrame) -> None:
+    """
+    Plot a 3-panel segment overview:
+      1. Customer count per segment (bar)
+      2. Revenue per segment (bar)
+    ...
+
+--- Cell 17 (code) ---
+def plot_rfm_distributions(rfm: pd.DataFrame) -> None:
+    """Plot histogram distributions for Recency, Frequency, and Monetary."""
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
+    fig.suptitle("RFM Raw Metric Distributions", fontsize=13, fontweight="bold")
+    ...
+
+--- Cell 18 (code) ---
+def plot_rfm_heatmap(rfm: pd.DataFrame) -> None:
+    """
+    Plot a heatmap of average Monetary value
+    by R_score (y-axis) and F_score (x-axis).
+    """
+    ...
+
+--- Cell 19 (code) ---
+def plot_scatter_rf(rfm: pd.DataFrame) -> None:
+    """Scatter: Recency vs Frequency, coloured by Segment."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    segments = rfm["Segment"].unique()
+    cmap = dict(zip(segments, PALETTE[:len(segments)]))
+    ...
+
+--- Cell 20 (markdown) ---
+## 3 · Customer Lifetime Value (CLV) Estimation
+
+--- Cell 21 (code) ---
+def add_clv(rfm: pd.DataFrame, horizon_months: int = 12) -> pd.DataFrame:
+    """
+    Add a simple CLV estimate to the RFM dataframe.
+
+    Formula
+    ...
+
+--- Cell 22 (code) ---
+# CLV bar chart
+clv_df = (
+    rfm.groupby("Segment")["CLV_12M"]
+       .mean()
+       .sort_values(ascending=True)
+    ...
+
+--- Cell 23 (markdown) ---
+## 4 · K-Means Clustering
+
+--- Cell 24 (code) ---
+def prepare_rfm_for_clustering(rfm: pd.DataFrame) -> np.ndarray:
+    """
+    Log-transform skewed RFM features and standardise them
+    for K-Means clustering.
+    ...
+
+--- Cell 25 (code) ---
+def find_optimal_k(X_scaled: np.ndarray,
+                   k_range: range = range(2, 11)) -> dict:
+    """
+    Run K-Means for multiple k values and record
+    inertia (Elbow) and Silhouette scores.
+    ...
+
+--- Cell 26 (code) ---
+def plot_elbow_silhouette(results: dict) -> None:
+    """Plot Elbow and Silhouette curves side by side."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4))
+
+    # Elbow
+    ...
+
+--- Cell 27 (code) ---
+# ── Fit final model with best k ─────────────────────────────────────────────
+BEST_K = results["k_values"][np.argmax(results["silhouettes"])]
+
+km_final = KMeans(n_clusters=BEST_K, random_state=42, n_init="auto")
+rfm["KMeans_Cluster"] = km_final.fit_predict(X_scaled)
+    ...
+
+--- Cell 28 (code) ---
+def label_kmeans_clusters(profile: pd.DataFrame) -> dict:
+    """
+    Auto-label K-Means clusters based on recency + monetary rank.
+    
+    Returns
+    ...
+
+--- Cell 29 (code) ---
+def plot_kmeans_scatter(rfm: pd.DataFrame) -> None:
+    """2-D scatter: Recency vs Monetary, coloured by K-Means cluster label."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for label, grp in rfm.groupby("KMeans_Label"):
+        ax.scatter(
+    ...
+
+--- Cell 30 (code) ---
+def plot_cluster_radar(profile: pd.DataFrame) -> None:
+    """
+    Radar (spider) chart comparing normalised RFM means per K-Means cluster.
+    Recency is inverted so 'higher = better' on all axes.
+    """
+    ...
+
+--- Cell 31 (markdown) ---
+## 5 · Actionable Marketing Recommendations
+
+--- Cell 32 (code) ---
+ACTION_MAP = {
+    "Champions": {
+        "priority": "⭐ High",
+        "action": "Loyalty rewards, early access, referral program",
+        "channel": "Email / Push notification",
+    ...
+
+--- Cell 33 (markdown) ---
+## 6 · Final Summary
+
+--- Cell 34 (code) ---
+total_customers = len(rfm)
+total_revenue   = rfm["monetary"].sum()
+top_segment     = segment_summary.iloc[0]
+
+print("=" * 55)
+    ...
+
