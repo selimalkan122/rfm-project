@@ -23,7 +23,7 @@ def add_clv_tenure(
     horizon_days = horizon_months * 30
 
     cust_first_purchase = (
-        df.groupby("CustomerID")["InvoiceDate"].min().rename("first_purchase")
+        df.groupby("CustomerID")["InvoiceDate"].min().rename("first_purchase").reset_index()
     )
 
     # Ensure CustomerID is a column for merge
@@ -53,29 +53,6 @@ def add_clv_tenure(
 
     if gross_margin_rate is not None:
         out["CLV_12M_GM"] = (out["CLV_12M"] * gross_margin_rate).round(2)
-
-    # region agent log
-    import json
-    import time
-    from pathlib import Path
-
-    _log_path = Path(__file__).resolve().parent.parent / "debug-70aa94.log"
-    _payload = {
-        "sessionId": "70aa94",
-        "runId": "pre-fix",
-        "hypothesisId": "A",
-        "location": "clv.py:add_clv_tenure:before_return",
-        "message": "CustomerID column vs index after CLV merge",
-        "data": {
-            "CustomerID_in_columns": bool("CustomerID" in out.columns),
-            "index_name": out.index.name,
-            "n_rows": int(len(out)),
-        },
-        "timestamp": int(time.time() * 1000),
-    }
-    with open(_log_path, "a", encoding="utf-8") as _f:
-        _f.write(json.dumps(_payload) + "\n")
-    # endregion
 
     return out
 

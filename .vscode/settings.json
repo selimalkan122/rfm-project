@@ -1,3 +1,4 @@
 {
     "workbench.sideBar.location": "left"
+    "jupyter.notebookFileRoot" "${workspaceFolder}"
 }
